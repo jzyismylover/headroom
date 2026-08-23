@@ -61,6 +61,18 @@ class DummyStorage(Storage):
     def get_summary_stats(self, **kwargs) -> dict[str, int]:
         return {}
 
+    def save_message_record(self, record) -> None:
+        return None
+
+    def list_sessions(self, **kwargs):
+        return []
+
+    def list_records_by_session(self, session_id, **kwargs):
+        return []
+
+    def list_records_by_request(self, request_id):
+        return []
+
     def close(self) -> None:
         self.closed = True
 

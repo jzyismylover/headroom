@@ -11,6 +11,7 @@ from typing import Any
 from ..config import RequestMetrics
 from ..utils import format_timestamp, parse_timestamp
 from .base import Storage
+from .compressed_messages import CompressedMessageRecord
 
 
 class JSONLStorage(Storage):
@@ -218,3 +219,137 @@ class JSONLStorage(Storage):
     def close(self) -> None:
         """No-op for file storage."""
         pass
+
+    # ------------------------------------------------------------------
+    # Diff Explorer backend — file scan implementation
+    # ------------------------------------------------------------------
+    def save_message_record(self, record: CompressedMessageRecord) -> None:
+        """Append a record to the same JSONL file.
+
+        Note: ``record_id`` is upserted by appending a new line; downstream
+        readers should pick the most recent line per ``record_id``. This is
+        acceptable because each extension emits a fresh ``uuid4()`` per stage.
+        """
+        path = Path(self.file_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record.to_dict(), ensure_ascii=False) + "\n")
+
+    def list_sessions(self, *, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        """Aggregate session stats by scanning the JSONL file.
+
+        Performance: O(N) on file size; intended for development usage.
+
+        The aggregated token totals come exclusively from message records
+        themselves (``stage == "before"`` contributes to
+        ``total_tokens_before`` and vice versa). We do NOT join against
+        ``RequestMetrics`` rows because the JSONL file stores both kinds of
+        records on separate lines and distinguishing them mid-scan is
+        non-trivial — callers wanting joined data should use SQLiteStorage.
+        """
+        agg: dict[str, dict[str, Any]] = {}
+        for rec in self._iter_message_records():
+            entry = agg.setdefault(
+                rec.session_id,
+                {
+                    "session_id": rec.session_id,
+                    "request_ids": set(),
+                    "first_seen": rec.created_at.isoformat() + "Z",
+                    "last_seen": rec.created_at.isoformat() + "Z",
+                    "total_tokens_before": 0,
+                    "total_tokens_after": 0,
+                },
+            )
+            entry["request_ids"].add(rec.request_id)
+            iso_ts = rec.created_at.isoformat() + "Z"
+            if iso_ts < entry["first_seen"]:
+                entry["first_seen"] = iso_ts
+            if iso_ts > entry["last_seen"]:
+                entry["last_seen"] = iso_ts
+            if rec.stage == "before":
+                entry["total_tokens_before"] += rec.tokens
+            elif rec.stage == "after":
+                entry["total_tokens_after"] += rec.tokens
+
+        rows = []
+        for entry in agg.values():
+            before = entry["total_tokens_before"]
+            after = entry["total_tokens_after"]
+            saved = max(0, before - after)
+            pct = (saved / before * 100.0) if before > 0 else 0.0
+            rows.append(
+                {
+                    "session_id": entry["session_id"],
+                    "request_count": len(entry["request_ids"]),
+                    "first_seen": entry["first_seen"],
+                    "last_seen": entry["last_seen"],
+                    "total_tokens_before": before,
+                    "total_tokens_after": after,
+                    "savings_percent": round(pct, 2),
+                }
+            )
+        rows.sort(key=lambda r: r["last_seen"], reverse=True)
+        return rows[offset : offset + limit]
+
+    def list_records_by_session(
+        self,
+        session_id: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[CompressedMessageRecord]:
+        matching = [r for r in self._iter_message_records() if r.session_id == session_id]
+        matching.sort(key=lambda r: (r.created_at, r.record_id), reverse=True)
+        # Upsert semantics: keep only the last record per ``record_id``.
+        seen: set[str] = set()
+        deduped: list[CompressedMessageRecord] = []
+        for rec in matching:
+            if rec.record_id in seen:
+                continue
+            seen.add(rec.record_id)
+            deduped.append(rec)
+        return deduped[offset : offset + limit]
+
+    def list_records_by_request(self, request_id: str) -> list[CompressedMessageRecord]:
+        matching = [r for r in self._iter_message_records() if r.request_id == request_id]
+        # Upsert: keep the last record per record_id.
+        last_per_id: dict[str, CompressedMessageRecord] = {}
+        for rec in matching:
+            last_per_id[rec.record_id] = rec
+        result = sorted(last_per_id.values(), key=lambda r: (r.created_at, r.stage))
+        return result
+
+    def _iter_message_records(self) -> Iterator[CompressedMessageRecord]:
+        """Yield every ``CompressedMessageRecord`` line in the JSONL file.
+
+        Upsert semantics: when the same ``record_id`` appears multiple
+        times, only the LAST occurrence is yielded (matching the SQLite
+        ``INSERT OR REPLACE`` contract on the abstract base class).
+        """
+        path = Path(self.file_path)
+        if not path.exists():
+            return
+        last_per_id: dict[str, CompressedMessageRecord] = {}
+        order: list[str] = []
+        with path.open(encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                # Distinguish message records from RequestMetrics lines by
+                # the presence of a ``stage`` field.
+                if "stage" not in data or "session_id" not in data:
+                    continue
+                try:
+                    rec = CompressedMessageRecord.from_dict(data)
+                except Exception:  # noqa: BLE001 — skip malformed rows
+                    continue
+                if rec.record_id not in last_per_id:
+                    order.append(rec.record_id)
+                last_per_id[rec.record_id] = rec
+        for rid in order:
+            yield last_per_id[rid]

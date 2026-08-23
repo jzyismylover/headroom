@@ -5,9 +5,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..config import RequestMetrics
+
+if TYPE_CHECKING:
+    from .compressed_messages import CompressedMessageRecord
 
 
 class Storage(ABC):
@@ -115,6 +118,51 @@ class Storage(ABC):
     def close(self) -> None:  # noqa: B027
         """Close storage connection if applicable."""
         pass
+
+    # ------------------------------------------------------------------
+    # Diff Explorer backend — compressed_message storage
+    # ------------------------------------------------------------------
+    @abstractmethod
+    def save_message_record(self, record: "CompressedMessageRecord") -> None:
+        """Persist a single before/after messages snapshot.
+
+        Implementations must be idempotent on ``record_id`` (upsert).
+        """
+
+    @abstractmethod
+    def list_sessions(self, *, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        """Return one entry per known ``session_id`` with aggregate stats.
+
+        Each entry MUST contain at least: ``session_id``, ``request_count``,
+        ``first_seen`` (ISO8601+Z), ``last_seen`` (ISO8601+Z),
+        ``total_tokens_before``, ``total_tokens_after``. ``savings_percent``
+        should be included when both totals are available.
+
+        Returns an empty list when no records exist (does NOT raise).
+        """
+
+    @abstractmethod
+    def list_records_by_session(
+        self,
+        session_id: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list["CompressedMessageRecord"]:
+        """Return all records for a session, newest-first by ``created_at``.
+
+        Returns an empty list when the session_id is unknown (does NOT raise).
+        """
+
+    @abstractmethod
+    def list_records_by_request(self, request_id: str) -> list["CompressedMessageRecord"]:
+        """Return every stage snapshot for a single request.
+
+        Returned list length is typically 0 or 2 (before / after), but the
+        contract permits 1 when one stage was skipped or capture failed.
+
+        Returns an empty list when the request_id is unknown (does NOT raise).
+        """
 
     def __enter__(self) -> Storage:
         """Context manager entry."""

@@ -12,6 +12,7 @@ from typing import Any
 from ..config import RequestMetrics
 from ..utils import format_timestamp, parse_timestamp
 from .base import Storage
+from .compressed_messages import CompressedMessageRecord
 
 
 class SQLiteStorage(Storage):
@@ -68,6 +69,32 @@ class SQLiteStorage(Storage):
             """)
             cursor.execute("""
                 CREATE INDEX IF NOT EXISTS idx_mode ON requests(mode)
+            """)
+
+            # ------------------------------------------------------------------
+            # Diff Explorer backend: one row per (request_id, stage) snapshot.
+            # ------------------------------------------------------------------
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS compressed_messages (
+                    record_id TEXT PRIMARY KEY,
+                    request_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    stage TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    api_style TEXT NOT NULL,
+                    messages_json TEXT NOT NULL,
+                    tokens INTEGER NOT NULL,
+                    messages_hash TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    byte_size INTEGER NOT NULL
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cm_session ON compressed_messages(session_id, created_at)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_cm_request ON compressed_messages(request_id)
             """)
 
             conn.commit()
@@ -287,3 +314,136 @@ class SQLiteStorage(Storage):
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+
+    # ------------------------------------------------------------------
+    # Diff Explorer backend — compressed_messages table
+    # ------------------------------------------------------------------
+    def save_message_record(self, record: CompressedMessageRecord) -> None:
+        """Upsert a single messages snapshot."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT OR REPLACE INTO compressed_messages (
+                record_id, request_id, session_id, stage, model, provider, api_style,
+                messages_json, tokens, messages_hash, created_at, byte_size
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                record.record_id,
+                record.request_id,
+                record.session_id,
+                record.stage,
+                record.model,
+                record.provider,
+                record.api_style,
+                record.messages_json,
+                record.tokens,
+                record.messages_hash,
+                format_timestamp(record.created_at),
+                record.byte_size,
+            ),
+        )
+        conn.commit()
+
+    def list_sessions(self, *, limit: int = 100, offset: int = 0) -> list[dict[str, Any]]:
+        """Aggregate stats per session_id (newest activity first).
+
+        Token totals are summed from the ``tokens`` column of each captured
+        record — NOT joined against the ``requests`` table. This keeps the
+        aggregation independent of whether ``RequestMetrics.save()`` was
+        called (capture can run without persistence of audit metrics).
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT
+                cm.session_id AS session_id,
+                COUNT(DISTINCT cm.request_id) AS request_count,
+                MIN(cm.created_at) AS first_seen,
+                MAX(cm.created_at) AS last_seen,
+                COALESCE(SUM(CASE WHEN cm.stage = 'before' THEN cm.tokens ELSE 0 END), 0) AS total_tokens_before,
+                COALESCE(SUM(CASE WHEN cm.stage = 'after'  THEN cm.tokens ELSE 0 END), 0) AS total_tokens_after
+            FROM compressed_messages cm
+            GROUP BY cm.session_id
+            ORDER BY last_seen DESC
+            LIMIT ? OFFSET ?
+            """,
+            (limit, offset),
+        )
+        rows = cursor.fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            before = int(row[4] or 0)
+            after = int(row[5] or 0)
+            saved = max(0, before - after)
+            pct = (saved / before * 100.0) if before > 0 else 0.0
+            result.append(
+                {
+                    "session_id": row[0],
+                    "request_count": int(row[1] or 0),
+                    "first_seen": row[2] or "",
+                    "last_seen": row[3] or "",
+                    "total_tokens_before": before,
+                    "total_tokens_after": after,
+                    "savings_percent": round(pct, 2),
+                }
+            )
+        return result
+
+    def list_records_by_session(
+        self,
+        session_id: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[CompressedMessageRecord]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT record_id, request_id, session_id, stage, model, provider,
+                   api_style, messages_json, tokens, messages_hash,
+                   created_at, byte_size
+            FROM compressed_messages
+            WHERE session_id = ?
+            ORDER BY created_at DESC, record_id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (session_id, limit, offset),
+        )
+        return [self._row_to_message_record(row) for row in cursor.fetchall()]
+
+    def list_records_by_request(self, request_id: str) -> list[CompressedMessageRecord]:
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT record_id, request_id, session_id, stage, model, provider,
+                   api_style, messages_json, tokens, messages_hash,
+                   created_at, byte_size
+            FROM compressed_messages
+            WHERE request_id = ?
+            ORDER BY created_at ASC, stage ASC
+            """,
+            (request_id,),
+        )
+        return [self._row_to_message_record(row) for row in cursor.fetchall()]
+
+    @staticmethod
+    def _row_to_message_record(row: sqlite3.Row) -> CompressedMessageRecord:
+        return CompressedMessageRecord(
+            record_id=row[0],
+            request_id=row[1],
+            session_id=row[2],
+            stage=row[3],
+            model=row[4],
+            provider=row[5],
+            api_style=row[6],
+            messages_json=row[7],
+            tokens=int(row[8] or 0),
+            messages_hash=row[9],
+            created_at=parse_timestamp(row[10]),
+            byte_size=int(row[11] or 0),
+        )
