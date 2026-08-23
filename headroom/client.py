@@ -20,6 +20,10 @@ from .config import (
     RequestMetrics,
     SimulationResult,
 )
+from .diff_explorer.session_resolver import (
+    extract_body_metadata,
+    resolve_session_id,
+)
 from .parser import parse_messages
 from .pipeline import PipelineExtensionManager, PipelineStage, summarize_routing_markers
 from .providers.base import Provider
@@ -334,6 +338,23 @@ class HeadroomClient:
             discover=self._config.discover_pipeline_extensions,
         )
 
+        # Diff Explorer backend — separate PipelineExtensionManager that
+        # runs in parallel with the user-facing one. We never mutate
+        # ``self._pipeline_extensions`` so existing hooks keep working.
+        self._capture_extensions: PipelineExtensionManager | None = None
+        if self._config.capture_messages:
+            from .diff_explorer.message_capture import MessageCaptureExtension
+
+            cap = MessageCaptureExtension(
+                self._storage,
+                max_record_bytes=self._config.capture_messages_max_bytes,
+                tokenizer=self._get_tokenizer(model) if model else None,
+            )
+            self._capture_extensions = PipelineExtensionManager(
+                extensions=[cap],
+                discover=False,
+            )
+
         # Initialize cache optimizer
         self._cache_optimizer: BaseCacheOptimizer | None = None
         self._semantic_cache_layer: SemanticCacheLayer | None = None
@@ -410,6 +431,39 @@ class HeadroomClient:
         timestamp = datetime.now(timezone.utc).replace(tzinfo=None)
         mode = HeadroomMode(headroom_mode) if headroom_mode else self._default_mode
 
+        # Diff Explorer: best-effort session_id extraction. This is opt-in
+        # by capture_messages; when off, we still try to populate the field
+        # so any user-supplied extension can read it.
+        _session_metadata: dict[str, str] = {}
+        try:
+            inline_md = extract_body_metadata(messages)
+            # OpenAI / Anthropic SDK convention: agents stash metadata under
+            # ``extra_body["metadata"]``. We also accept ``kwargs["metadata"]``
+            # directly. Inline pseudo-message metadata is treated as a
+            # last-resort fallback — it's rarely used by real SDKs but may
+            # appear in custom agent harnesses.
+            extra_body = kwargs.get("extra_body") or {}
+            extra_body_md = extra_body.get("metadata") if isinstance(extra_body, dict) else None
+            kw_md = kwargs.get("metadata")
+            merged_md: dict[str, Any] = {}
+            if isinstance(extra_body_md, dict):
+                merged_md.update(extra_body_md)
+            if isinstance(kw_md, dict):
+                merged_md.update(kw_md)
+            # Inline metadata only fills keys that weren't already set above.
+            if inline_md:
+                for k, v in inline_md.items():
+                    merged_md.setdefault(k, v)
+            extra_headers = kwargs.get("extra_headers") or kwargs.get("headers")
+            auto_sid = resolve_session_id(
+                body_metadata=merged_md or None,
+                headers=extra_headers if isinstance(extra_headers, dict) else None,
+            )
+            if auto_sid:
+                _session_metadata["session_id"] = auto_sid
+        except Exception:  # noqa: BLE001 — never break the request path
+            pass
+
         input_event = self._pipeline_extensions.emit(
             PipelineStage.INPUT_RECEIVED,
             operation="sdk.request",
@@ -417,10 +471,35 @@ class HeadroomClient:
             provider=self._provider.name.lower(),
             model=model,
             messages=messages,
-            metadata={"api_style": api_style, "stream": stream, "mode": mode.value},
+            metadata={
+                "api_style": api_style,
+                "stream": stream,
+                "mode": mode.value,
+                "timestamp": timestamp.isoformat() + "Z",
+                **_session_metadata,
+            },
         )
         if input_event.messages is not None:
             messages = input_event.messages
+
+        # Mirror the same event into the capture manager (if enabled) so the
+        # MessageCaptureExtension sees the raw messages before any transform.
+        if self._capture_extensions is not None:
+            cap_event = self._capture_extensions.emit(
+                PipelineStage.INPUT_RECEIVED,
+                operation="sdk.request",
+                request_id=request_id,
+                provider=self._provider.name.lower(),
+                model=model,
+                messages=messages,
+                metadata={
+                    "api_style": api_style,
+                    **_session_metadata,
+                },
+            )
+            # The capture extension returns the event unchanged; we don't
+            # act on its messages (capture is a side-effect-only hook).
+            del cap_event
 
         tokenizer = self._get_tokenizer(model)
 
@@ -538,11 +617,31 @@ class HeadroomClient:
                     "tokens_before": tokens_before,
                     "tokens_after": tokens_after,
                     "transforms_applied": transforms_applied,
+                    **_session_metadata,
                 },
             )
             if compressed_event.messages is not None:
                 optimized_messages = compressed_event.messages
                 tokens_after = tokenizer.count_messages(optimized_messages)
+
+            # Mirror to capture manager so MessageCaptureExtension sees the
+            # post-transform "after" snapshot.
+            if self._capture_extensions is not None:
+                cap_compressed = self._capture_extensions.emit(
+                    PipelineStage.INPUT_COMPRESSED,
+                    operation="sdk.request",
+                    request_id=request_id,
+                    provider=self._provider.name.lower(),
+                    model=model,
+                    messages=optimized_messages,
+                    metadata={
+                        "tokens_before": tokens_before,
+                        "tokens_after": tokens_after,
+                        "transforms_applied": transforms_applied,
+                        **_session_metadata,
+                    },
+                )
+                del cap_compressed
 
             # Recalculate prefix hash after optimization
             stable_prefix_hash = compute_prefix_hash(optimized_messages)

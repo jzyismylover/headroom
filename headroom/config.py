@@ -688,6 +688,14 @@ class HeadroomConfig:
     pipeline_extensions: list[Any] = field(default_factory=list)
     discover_pipeline_extensions: bool = True
 
+    # Diff Explorer backend — opt-in message capture at INPUT_RECEIVED /
+    # INPUT_COMPRESSED. Off by default to avoid surprising storage cost.
+    capture_messages: bool = False
+    # Per-record byte cap; oversize payloads are replaced by a
+    # ``{"_truncated": true, ...}`` placeholder so a single huge tool
+    # output can't blow up the SQLite file.
+    capture_messages_max_bytes: int = 5 * 1024 * 1024
+
     def __post_init__(self, content_router_enabled: bool | None = None) -> None:
         if self.rollout is None:
             requested = ("tool_result_interceptors",) if self.intercept_tool_results else ()
