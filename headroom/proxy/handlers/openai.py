@@ -3249,7 +3249,12 @@ class OpenAIHandlerMixin:
             model=model,
             messages=messages,
             tools=body.get("tools"),
-            metadata={"path": handler_path, "stream": body.get("stream", False)},
+            headers=dict(request.headers),
+            metadata={
+                "path": handler_path,
+                "stream": body.get("stream", False),
+                "api_style": "openai",
+            },
         )
         if input_event.messages is not None:
             messages = input_event.messages

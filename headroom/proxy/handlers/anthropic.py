@@ -1040,7 +1040,12 @@ class AnthropicHandlerMixin:
                 model=model,
                 messages=messages,
                 tools=body.get("tools"),
-                metadata={"path": pipeline_path, "stream": pipeline_stream},
+                headers=dict(request.headers),
+                metadata={
+                    "path": pipeline_path,
+                    "stream": pipeline_stream,
+                    "api_style": "anthropic",
+                },
             )
             if input_event.messages is not None:
                 messages = input_event.messages

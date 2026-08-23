@@ -157,6 +157,7 @@ from headroom.proxy.modes import (
     is_token_mode,
     normalize_proxy_mode,
 )
+from headroom.proxy.diff_capture import diff_capture_extension_from_env
 from headroom.proxy.probe_recorder import probe_recorder_from_env
 from headroom.proxy.project_context import (
     classify_project,
@@ -783,6 +784,13 @@ class HeadroomProxy(
         probe_recorder = probe_recorder_from_env()
         if probe_recorder is not None:
             pipeline_extensions.append(probe_recorder)
+        # Diff Explorer capture — register on the same pipeline_extensions
+        # bus that the anthropic/openai handlers emit INPUT_RECEIVED /
+        # INPUT_COMPRESSED on. ON by default; opt out via
+        # HEADROOM_PROXY_CAPTURE_DIFF=0.
+        diff_capture = diff_capture_extension_from_env()
+        if diff_capture is not None:
+            pipeline_extensions.append(diff_capture)
         self.pipeline_extensions = PipelineExtensionManager(
             hooks=config.hooks,
             extensions=pipeline_extensions,
@@ -2780,6 +2788,38 @@ def create_app(config: ProxyConfig | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.add_middleware(WebSocketProjectPrefixMiddleware)
+
+    # Diff Explorer backend — read-only REST API for the Vue dashboard.
+    # CORS is enabled only for explicit localhost origins (5173 is the Vite
+    # dev server default); see ``shares/sdd/headroom/方案.md`` §B6.
+    from fastapi.middleware.cors import CORSMiddleware
+
+    _default_origins = (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    )
+    _configured = tuple(
+        origin.strip()
+        for origin in os.environ.get("HEADROOM_DIFF_EXPLORER_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_configured or _default_origins,
+        allow_credentials=True,
+        allow_methods=["GET"],
+        allow_headers=["*"],
+    )
+    try:
+        from ..diff_explorer import diff_explorer_router
+
+        app.include_router(diff_explorer_router)
+    except Exception as exc:  # noqa: BLE001 — never break proxy startup
+        import logging as _logging
+
+        _logging.getLogger(__name__).warning(
+            "Diff Explorer router not mounted: %s", exc,
+        )
     loop_health_state: LoopHealthState = {
         "status": "healthy",
         "known_failures": 0,
