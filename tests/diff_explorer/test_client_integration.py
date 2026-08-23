@@ -118,7 +118,7 @@ def test_pipeline_emit_two_stages_records_both(tmp_path):
         request_id="req-e2e-1",
         provider="openai",
         model="gpt-4o",
-        messages=[{"role": "user", "content": "hello"}],
+        messages=[{"role": "user", "content": "a very long preamble that the compressor will shrink"}],
         metadata={
             "api_style": "openai",
             "session_id": "sess-e2e-1",
@@ -139,6 +139,20 @@ def test_pipeline_emit_two_stages_records_both(tmp_path):
             "timestamp": ts2,
             "tokens_before": 10,
             "tokens_after": 5,
+        },
+    )
+    # TOOLS_COMPRESSED — writes flush only on this stage (diff-gated).
+    manager.emit(
+        PipelineStage.TOOLS_COMPRESSED,
+        operation="sdk.request",
+        request_id="req-e2e-1",
+        provider="openai",
+        model="gpt-4o",
+        tools=None,
+        metadata={
+            "api_style": "openai",
+            "session_id": "sess-e2e-1",
+            "timestamp": ts2,
         },
     )
 
@@ -164,8 +178,27 @@ def test_pipeline_emit_with_placeholder_session(tmp_path):
         request_id="req-orphan-12345678",
         provider="openai",
         model="gpt-4o",
-        messages=[{"role": "user", "content": "hi"}],
+        messages=[{"role": "user", "content": "a long preamble before compression"}],
         metadata={"api_style": "openai", "timestamp": "2025-08-23T10:00:00Z"},
+    )
+    manager.emit(
+        PipelineStage.INPUT_COMPRESSED,
+        operation="sdk.request",
+        request_id="req-orphan-12345678",
+        provider="openai",
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "compressed"}],
+        metadata={"api_style": "openai", "timestamp": "2025-08-23T10:00:01Z"},
+    )
+    # Flush via TOOLS_COMPRESSED so the diff-gated write actually persists.
+    manager.emit(
+        PipelineStage.TOOLS_COMPRESSED,
+        operation="sdk.request",
+        request_id="req-orphan-12345678",
+        provider="openai",
+        model="gpt-4o",
+        tools=None,
+        metadata={"api_style": "openai", "timestamp": "2025-08-23T10:00:01Z"},
     )
     rec = s.list_records_by_request("req-orphan-12345678")[0]
     assert rec.session_id.startswith("_no_session:req-orph-")

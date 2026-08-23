@@ -246,6 +246,10 @@ class JSONLStorage(Storage):
         ``RequestMetrics`` rows because the JSONL file stores both kinds of
         records on separate lines and distinguishing them mid-scan is
         non-trivial — callers wanting joined data should use SQLiteStorage.
+
+        Byte totals prefer ``full_bytes`` (honest full-context size) and fall
+        back to ``byte_size`` (stored delta payload) for legacy lines written
+        before ``full_bytes`` existed.
         """
         agg: dict[str, dict[str, Any]] = {}
         for rec in self._iter_message_records():
@@ -258,6 +262,8 @@ class JSONLStorage(Storage):
                     "last_seen": rec.created_at.isoformat() + "Z",
                     "total_tokens_before": 0,
                     "total_tokens_after": 0,
+                    "total_bytes_before": 0,
+                    "total_bytes_after": 0,
                 },
             )
             entry["request_ids"].add(rec.request_id)
@@ -266,25 +272,30 @@ class JSONLStorage(Storage):
                 entry["first_seen"] = iso_ts
             if iso_ts > entry["last_seen"]:
                 entry["last_seen"] = iso_ts
+            side_bytes = rec.full_bytes if rec.full_bytes > 0 else rec.byte_size
             if rec.stage == "before":
                 entry["total_tokens_before"] += rec.tokens
+                entry["total_bytes_before"] += side_bytes
             elif rec.stage == "after":
                 entry["total_tokens_after"] += rec.tokens
+                entry["total_bytes_after"] += side_bytes
 
         rows = []
         for entry in agg.values():
-            before = entry["total_tokens_before"]
-            after = entry["total_tokens_after"]
-            saved = max(0, before - after)
-            pct = (saved / before * 100.0) if before > 0 else 0.0
+            bytes_before = entry["total_bytes_before"]
+            bytes_after = entry["total_bytes_after"]
+            saved_bytes = max(0, bytes_before - bytes_after)
+            pct = (saved_bytes / bytes_before * 100.0) if bytes_before > 0 else 0.0
             rows.append(
                 {
                     "session_id": entry["session_id"],
                     "request_count": len(entry["request_ids"]),
                     "first_seen": entry["first_seen"],
                     "last_seen": entry["last_seen"],
-                    "total_tokens_before": before,
-                    "total_tokens_after": after,
+                    "total_tokens_before": entry["total_tokens_before"],
+                    "total_tokens_after": entry["total_tokens_after"],
+                    "total_bytes_before": bytes_before,
+                    "total_bytes_after": bytes_after,
                     "savings_percent": round(pct, 2),
                 }
             )

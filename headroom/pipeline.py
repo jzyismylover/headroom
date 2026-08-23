@@ -23,6 +23,7 @@ class PipelineStage(str, Enum):
     INPUT_CACHED = "input_cached"
     INPUT_ROUTED = "input_routed"
     INPUT_COMPRESSED = "input_compressed"
+    TOOLS_COMPRESSED = "tools_compressed"
     INPUT_REMEMBERED = "input_remembered"
     PRE_SEND = "pre_send"
     POST_SEND = "post_send"
@@ -37,6 +38,7 @@ CANONICAL_PIPELINE_STAGES: tuple[PipelineStage, ...] = (
     PipelineStage.INPUT_CACHED,
     PipelineStage.INPUT_ROUTED,
     PipelineStage.INPUT_COMPRESSED,
+    PipelineStage.TOOLS_COMPRESSED,
     PipelineStage.INPUT_REMEMBERED,
     PipelineStage.PRE_SEND,
     PipelineStage.POST_SEND,

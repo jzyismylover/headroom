@@ -651,6 +651,23 @@ class HeadroomClient:
             tokens_after = tokens_before
             transforms_applied = []
 
+        # Diff Explorer: release the buffered before/after pair. The SDK
+        # compresses messages only (no tool compaction), so tools is None and
+        # this is a pure flush marker for MessageCaptureExtension. Emitted for
+        # both the compression and audit-mode branches — in audit mode the
+        # extension sees after_messages is None and skips the write.
+        if self._capture_extensions is not None:
+            self._capture_extensions.emit(
+                PipelineStage.TOOLS_COMPRESSED,
+                operation="sdk.request",
+                request_id=request_id,
+                provider=self._provider.name.lower(),
+                model=model,
+                messages=None,
+                tools=None,
+                metadata={**_session_metadata},
+            )
+
         presend_event = self._pipeline_extensions.emit(
             PipelineStage.PRE_SEND,
             operation="sdk.request",

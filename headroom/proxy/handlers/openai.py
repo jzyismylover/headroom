@@ -4141,6 +4141,26 @@ class OpenAIHandlerMixin:
         if tools or _original_tools is not None:
             body["tools"] = tools
 
+        # Diff Explorer: emit TOOLS_COMPRESSED once the chat-completions tool
+        # compaction chain (schema + description) has settled. Messages were
+        # already captured by the INPUT_COMPRESSED emit earlier in the path,
+        # so we only surface the post-compaction tools list plus the
+        # accumulated transforms. Emit unconditionally so diff-gated
+        # extensions see no-op requests too. Guarded so handler test doubles
+        # without a pipeline bus stay a no-op (capture must never break
+        # forwarding).
+        if getattr(self, "pipeline_extensions", None) is not None:
+            self.pipeline_extensions.emit(
+                PipelineStage.TOOLS_COMPRESSED,
+                operation="proxy.request",
+                request_id=request_id,
+                provider="openai",
+                model=model,
+                messages=None,
+                tools=body.get("tools"),
+                metadata={"transforms_applied": transforms_applied},
+            )
+
         # Reasoning compaction (HEADROOM_THINKING_COMPACT, off by default). Unlike
         # Anthropic/OpenAI (encrypted reasoning handles, nothing to compress),
         # Kimi/GLM/DeepSeek-R1 resend reasoning as PLAIN TEXT billed as input (Kimi
@@ -5691,6 +5711,37 @@ class OpenAIHandlerMixin:
             )
             url = _append_request_query(url, request.url.query)
 
+        # Diff Explorer: snapshot the pre-compression Responses payload as
+        # chat-style messages so MessageCaptureExtension can pair it with the
+        # post-compression emit below. Emitted after memory injection so the
+        # diff isolates what compression actually changed. Fail-open: a
+        # conversion hiccup must never break request forwarding.
+        try:
+            _diff_before_messages = _responses_input_to_learner_messages(
+                body.get("instructions"), body.get("input")
+            )
+        except Exception:  # noqa: BLE001
+            _diff_before_messages = None
+        if (
+            _diff_before_messages is not None
+            and getattr(self, "pipeline_extensions", None) is not None
+        ):
+            self.pipeline_extensions.emit(
+                PipelineStage.INPUT_RECEIVED,
+                operation="proxy.request",
+                request_id=request_id,
+                provider="openai",
+                model=model,
+                messages=_diff_before_messages,
+                tools=body.get("tools"),
+                headers=dict(request.headers),
+                metadata={
+                    "path": "/v1/responses",
+                    "stream": body.get("stream", False),
+                    "api_style": "openai",
+                },
+            )
+
         # The standalone Rust proxy has native /v1/responses item handling,
         # but the default CLI runtime is this Python proxy. Compress the
         # Python runtime path here by extracting mutable Responses text into
@@ -5793,6 +5844,54 @@ class OpenAIHandlerMixin:
                             }
                         },
                     ) from _e
+
+        # Diff Explorer: snapshot the post-compression Responses payload so
+        # MessageCaptureExtension can pair it with the pre-compression emit
+        # above and persist a before/after diff. Fail-open like the emit
+        # above. Note: original_tokens/optimized_tokens are counted on the
+        # synthetic chat messages, so they are best-effort metadata only.
+        try:
+            _diff_after_messages = _responses_input_to_learner_messages(
+                body.get("instructions"), body.get("input")
+            )
+        except Exception:  # noqa: BLE001
+            _diff_after_messages = None
+        if (
+            _diff_after_messages is not None
+            and getattr(self, "pipeline_extensions", None) is not None
+        ):
+            self.pipeline_extensions.emit(
+                PipelineStage.INPUT_COMPRESSED,
+                operation="proxy.request",
+                request_id=request_id,
+                provider="openai",
+                model=model,
+                messages=_diff_after_messages,
+                metadata={
+                    "tokens_before": original_tokens,
+                    "tokens_after": optimized_tokens,
+                    "transforms_applied": transforms_applied,
+                },
+            )
+
+        # Diff Explorer: emit TOOLS_COMPRESSED once the responses-API tool
+        # compaction chain has settled (it runs inside
+        # _compress_openai_responses_payload_in_executor above). Messages
+        # are already captured by INPUT_COMPRESSED, so we only forward the
+        # final tools list. Emit unconditionally so diff-gated extensions
+        # see no-op requests too. Guarded so handler test doubles without a
+        # pipeline bus stay a no-op (capture must never break forwarding).
+        if getattr(self, "pipeline_extensions", None) is not None:
+            self.pipeline_extensions.emit(
+                PipelineStage.TOOLS_COMPRESSED,
+                operation="proxy.request",
+                request_id=request_id,
+                provider="openai",
+                model=model,
+                messages=None,
+                tools=body.get("tools"),
+                metadata={"transforms_applied": transforms_applied},
+            )
 
         if not _bypass:
             _http_conversation_key = request.headers.get("x-headroom-session-id")

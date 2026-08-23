@@ -17,8 +17,11 @@ Resolution priority (first non-empty wins):
         - ``x-conversation-id``
         - ``x-thread-id``
         - ``x-codex-session-id``
-        - ``request-id``      (anthropic fallback)
-        - ``x-request-id``    (openai fallback)
+        - ``x-codex-turn-metadata``  (JSON; ``session_id`` / ``thread_id``)
+        - ``session-id``            (codex desktop)
+        - ``thread-id``             (codex desktop)
+        - ``request-id``            (anthropic fallback)
+        - ``x-request-id``          (openai fallback)
 
 Returns ``None`` if no candidate is found — the caller decides the fallback
 strategy (placeholder string vs. drop the record).
@@ -26,6 +29,7 @@ strategy (placeholder string vs. drop the record).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -47,9 +51,13 @@ SESSION_BODY_KEYS: tuple[str, ...] = (
 # id when one is set.
 SESSION_HEADER_KEYS: tuple[str, ...] = (
     "x-headroom-session-id",
+    "x-claude-code-session-id",
     "x-session-id",
+    "x-codex-turn-metadata",
+    "session-id",
     "x-conversation-id",
     "x-thread-id",
+    "thread-id",
     "x-codex-session-id",
     "request-id",
     "x-request-id",
@@ -100,9 +108,39 @@ def resolve_session_id(
         }
         for hk in SESSION_HEADER_KEYS:
             v = lower_headers.get(hk)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
+            if not isinstance(v, str) or not v.strip():
+                continue
+            if hk == "x-codex-turn-metadata":
+                sid = _session_id_from_codex_turn_metadata(v)
+                if sid:
+                    return sid
+                continue
+            return v.strip()
 
+    return None
+
+
+def _session_id_from_codex_turn_metadata(raw: str) -> str | None:
+    """Extract ``session_id`` (falling back to ``thread_id``) from the JSON
+    ``x-codex-turn-metadata`` header that Codex Desktop sends on every request.
+
+    The header value is a JSON object; ``session_id`` is the stable anchor
+    that stays identical across all tool_calls within a turn (and across
+    turns of the same conversation), so grouping on it makes every request
+    of one conversation land in the same dashboard session.
+    """
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    for key in ("session_id", "thread_id"):
+        val = data.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
     return None
 
 

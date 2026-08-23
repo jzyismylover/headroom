@@ -1,0 +1,106 @@
+<mxfile host="Electron">
+  <diagram name="LogCompressor" id="0">
+    <mxGraphModel dx="1548" dy="1202" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1280" pageHeight="1240" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="LogCompressor.compress&#xa;(content, bias)" vertex="1">
+          <mxGeometry height="60" width="280" x="60" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="3" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="日志不足 50 行？" vertex="1">
+          <mxGeometry height="90" width="240" x="80" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="直接返回原文&#xa;（不压缩）" vertex="1">
+          <mxGeometry height="60" width="200" x="430" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="识别日志格式" vertex="1">
+          <mxGeometry height="50" width="280" x="60" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="逐行解析与分类" vertex="1">
+          <mxGeometry height="50" width="280" x="60" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="7" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="自适应行数预算" vertex="1">
+          <mxGeometry height="50" width="280" x="60" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="8" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="按重要性筛选行" vertex="1">
+          <mxGeometry height="50" width="280" x="60" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="组装输出 + 省略汇总" vertex="1">
+          <mxGeometry height="50" width="280" x="60" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="10" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="压缩省一半以上？" vertex="1">
+          <mxGeometry height="90" width="240" x="80" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="CCR：存恢复库 + 加检索标记" vertex="1">
+          <mxGeometry height="60" width="260" x="70" y="990" as="geometry" />
+        </mxCell>
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="压缩结果&#xa;（可检索恢复）" vertex="1">
+          <mxGeometry height="60" width="200" x="100" y="1100" as="geometry" />
+        </mxCell>
+        <mxCell id="13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="压缩结果&#xa;（无需恢复）" vertex="1">
+          <mxGeometry height="60" width="200" x="430" y="865" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="4" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="5" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="6" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="7" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="8" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="10" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="11" value="是">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="13" value="否">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="12" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="日志不足 50 行时不做压缩，直接返回原文" vertex="1">
+          <mxGeometry height="30" width="220" x="650" y="173" as="geometry" />
+        </mxCell>
+        <mxCell id="5t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="扫描前 100 行判断日志来源（测试 / 打包 / 编译）&#xa;识别不出时按通用日志处理" vertex="1">
+          <mxGeometry height="40" width="260" x="350" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="6t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="逐行标记级别：错误 / 警告 / 信息 / 调试&#xa;识别堆栈与汇总行，链式异常跨空行不截断&#xa;按重要性打分：错误最高，堆栈与汇总加分" vertex="1">
+          <mxGeometry height="56" width="380" x="350" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="7t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="按内容自动决定保留行数（默认上限 100 行）" vertex="1">
+          <mxGeometry height="30" width="260" x="350" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="8t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="错误 / 失败：保留首、尾及高分项&lt;br&gt;警告：去重后保留少数&lt;br&gt;堆栈：保留前几个，过长时折叠&lt;br&gt;汇总行全保留 · 关键行补上下文 · 超预算裁剪" vertex="1">
+          <mxGeometry height="72" width="260" x="350" y="630" as="geometry" />
+        </mxCell>
+        <mxCell id="9t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="末尾追加被省略行数的统计&#xa;计算压缩率 = 压缩后 / 原文" vertex="1">
+          <mxGeometry height="40" width="260" x="350" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="10t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="默认省一半以上才存入恢复库" vertex="1">
+          <mxGeometry height="30" width="260" x="350" y="795" as="geometry" />
+        </mxCell>
+        <mxCell id="11t" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="原文存入恢复库，末尾追加含哈希的检索标记&#xa;之后可凭标记找回被压缩掉的原文&#xa;功能关闭或写入失败时跳过" vertex="1">
+          <mxGeometry height="56" width="280" x="350" y="990" as="geometry" />
+        </mxCell>
+        <mxCell id="ex1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=10;fontColor=#444444;align=left;verticalAlign=top;spacing=4;" value="示例：100 行日志压缩为 6 行（省超一半）&#xa;输入：大量普通日志 + 少数错误 / 警告 / 堆栈 / 汇总&#xa;输出：错误、堆栈、汇总保留，警告去重，并统计省略行数&#xa;省超一半 → 存入恢复库，末尾加检索标记" vertex="1">
+          <mxGeometry height="80" width="560" x="650" y="1000" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

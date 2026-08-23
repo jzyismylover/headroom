@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as _dt
+import json
 
 from headroom.diff_explorer.session_resolver import (
     NO_SESSION_PREFIX,
@@ -87,6 +88,65 @@ def test_header_case_insensitive():
     """Headers are normalized to lowercase before lookup."""
     headers = {"X-SESSION-ID": "upper-mixed"}
     assert resolve_session_id(headers=headers) == "upper-mixed"
+
+
+# --- Codex Desktop headers (session-id / thread-id / x-codex-turn-metadata) ---
+def test_header_plain_session_id():
+    """Codex Desktop sends a bare ``session-id`` header."""
+    headers = {"session-id": "01a02f33-f3c9-7b13-afd6-73aa0bdd7ded"}
+    assert resolve_session_id(headers=headers) == "01a02f33-f3c9-7b13-afd6-73aa0bdd7ded"
+
+
+def test_header_plain_session_id_uppercase_key():
+    """Canonical HTTP form ``Session-Id`` is normalized before lookup."""
+    headers = {"Session-Id": "cx-sess"}
+    assert resolve_session_id(headers=headers) == "cx-sess"
+
+
+def test_header_plain_thread_id():
+    assert resolve_session_id(headers={"thread-id": "th-1"}) == "th-1"
+
+
+def test_header_codex_turn_metadata_session_id():
+    """The JSON ``x-codex-turn-metadata`` header surfaces its session_id."""
+    headers = {
+        "x-codex-turn-metadata": json.dumps(
+            {
+                "session_id": "01a02f33-f3c9-7b13-afd6-73aa0bdd7ded",
+                "thread_id": "01a02f33-f3c9-7b13-afd6-73aa0bdd7ded",
+            }
+        )
+    }
+    assert resolve_session_id(headers=headers) == "01a02f33-f3c9-7b13-afd6-73aa0bdd7ded"
+
+
+def test_header_codex_turn_metadata_falls_back_to_thread_id():
+    headers = {"x-codex-turn-metadata": json.dumps({"thread_id": "cx-thread"})}
+    assert resolve_session_id(headers=headers) == "cx-thread"
+
+
+def test_header_codex_turn_metadata_prefers_session_id():
+    """When both fields exist, session_id wins over thread_id."""
+    headers = {
+        "x-codex-turn-metadata": json.dumps(
+            {"session_id": "sess-wins", "thread_id": "thread-loses"}
+        )
+    }
+    assert resolve_session_id(headers=headers) == "sess-wins"
+
+
+def test_header_codex_turn_metadata_malformed_json_skipped():
+    """Unparseable turn-metadata must not crash; later keys still resolve."""
+    headers = {
+        "x-codex-turn-metadata": "not-json",
+        "session-id": "fallback-sess",
+    }
+    assert resolve_session_id(headers=headers) == "fallback-sess"
+
+
+def test_header_codex_turn_metadata_empty_object_skipped():
+    headers = {"x-codex-turn-metadata": json.dumps({}), "thread-id": "fallback-thread"}
+    assert resolve_session_id(headers=headers) == "fallback-thread"
 
 
 def test_body_beats_header():
@@ -200,10 +260,21 @@ def test_body_keys_priority_order():
 
 
 def test_header_keys_priority_order():
-    """x-session-id must come first in SESSION_HEADER_KEYS."""
-    assert SESSION_HEADER_KEYS[0] == "x-session-id"
+    """x-headroom-session-id must come first in SESSION_HEADER_KEYS."""
+    assert SESSION_HEADER_KEYS[0] == "x-headroom-session-id"
+    assert "x-claude-code-session-id" in SESSION_HEADER_KEYS
+    assert "x-session-id" in SESSION_HEADER_KEYS
     assert "x-conversation-id" in SESSION_HEADER_KEYS
     assert "x-thread-id" in SESSION_HEADER_KEYS
     assert "x-codex-session-id" in SESSION_HEADER_KEYS
+    assert "x-codex-turn-metadata" in SESSION_HEADER_KEYS
+    assert "session-id" in SESSION_HEADER_KEYS
+    assert "thread-id" in SESSION_HEADER_KEYS
     assert "request-id" in SESSION_HEADER_KEYS
     assert "x-request-id" in SESSION_HEADER_KEYS
+
+
+def test_header_x_claude_code_session_id():
+    """claude code sends x-claude-code-session-id as its canonical
+    session anchor; the resolver must surface it."""
+    assert resolve_session_id(headers={'x-claude-code-session-id': 'abc-123'}) == 'abc-123'

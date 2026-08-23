@@ -34,6 +34,21 @@ class CompressedMessageRecord:
     messages_hash: str  # mirrors RequestMetrics.messages_hash semantics
     created_at: datetime  # UTC, naive (consistent with RequestMetrics)
     byte_size: int  # byte length of messages_json (UTF-8)
+    # Byte length of the FULL pre/post-compression context for this stage
+    # (messages + tools, normalized via _side_bytes). Unlike ``byte_size`` —
+    # which measures only the compact delta payload that was stored — this is
+    # the honest full-context size, so the dashboard ratio reflects real
+    # compression of the whole request. 0 for records written before the
+    # column existed (aggregations fall back to ``byte_size`` then).
+    full_bytes: int = 0
+    tools_json: str = ""  # compact JSON of tools list (empty when no tools)
+    tools_byte_size: int = 0  # byte length of tools_json (UTF-8)
+    tools_hash: str = ""  # hash of tools_json for quick equality checks
+    # JSON of ``{"transforms_applied": [...], "compressors": [...]}`` — the
+    # pipeline markers that ran on this request plus their human-readable
+    # compressor display names (e.g. KCompress / SmartCrusher). Empty for
+    # legacy rows written before the column was added.
+    transforms_json: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-safe dict (for JSONLStorage / API responses)."""
@@ -50,6 +65,11 @@ class CompressedMessageRecord:
             "messages_hash": self.messages_hash,
             "created_at": self.created_at.isoformat() + "Z",
             "byte_size": self.byte_size,
+            "full_bytes": self.full_bytes,
+            "tools_json": self.tools_json,
+            "tools_byte_size": self.tools_byte_size,
+            "tools_hash": self.tools_hash,
+            "transforms_json": self.transforms_json,
         }
 
     @classmethod
@@ -75,6 +95,11 @@ class CompressedMessageRecord:
             messages_hash=data["messages_hash"],
             created_at=created_at,
             byte_size=int(data["byte_size"]),
+            full_bytes=int(data.get("full_bytes") or 0),
+            tools_json=str(data.get("tools_json") or ""),
+            tools_byte_size=int(data.get("tools_byte_size") or 0),
+            tools_hash=str(data.get("tools_hash") or ""),
+            transforms_json=str(data.get("transforms_json") or ""),
         )
 
 

@@ -661,6 +661,10 @@ def _provider_httpx_client_options(
             keepalive_expiry=config.keepalive_expiry,
         ),
         "verify": verify,
+        # Proxy has its own explicit HEADROOM_HTTP_PROXY; do not let httpx
+        # also auto-pick HTTP_PROXY/HTTPS_PROXY/ALL_PROXY from the shell,
+        # which silently tries to load socksio when a SOCKS URL is set.
+        "trust_env": False,
     }
     if config.http_proxy:
         client_kwargs["proxy"] = config.http_proxy

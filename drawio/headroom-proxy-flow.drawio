@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="26.0.0">
+  <diagram name="代理网关层流程" id="proxy-flow-1">
+    <mxGraphModel dx="1200" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1520" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 开始 -->
+        <mxCell id="start" value="&lt;b&gt;请求接入&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;HTTP · SSE · WebSocket&lt;/font&gt;" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="40" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 鉴权 -->
+        <mxCell id="auth" value="&lt;b&gt;鉴权&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;classify_auth_mode · auth_policy&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="160" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 协议解析 -->
+        <mxCell id="parse" value="&lt;b&gt;协议解析 → OpenAI messages&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;handlers/ · anthropic·openai·gemini·bedrock&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="280" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 模型路由 -->
+        <mxCell id="route" value="&lt;b&gt;模型路由&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;model_router · provider / upstream&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="400" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 决策：语义缓存 -->
+        <mxCell id="cache" value="&lt;b&gt;语义缓存命中?&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;semantic_cache&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="210" y="520" width="220" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- 压缩决策 -->
+        <mxCell id="cdec" value="&lt;b&gt;压缩决策&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;compression_decision · memory_decision&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="680" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 压缩优化 -->
+        <mxCell id="compress" value="&lt;b&gt;压缩优化&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;SmartCrusher · CacheAligner · CCR&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="800" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 限流 -->
+        <mxCell id="rate" value="&lt;b&gt;限流 / 并发控制&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;rate_limiter · pre_upstream sem&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="920" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 转发上游 -->
+        <mxCell id="forward" value="&lt;b&gt;转发上游&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;Anthropic · OpenAI · Bedrock · Gemini&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1040" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 响应处理 -->
+        <mxCell id="response" value="&lt;b&gt;响应处理&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;streaming · output_shaper · buffered CCR&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1160" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 成本统计 -->
+        <mxCell id="cost" value="&lt;b&gt;成本 / 省量统计&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;cost · savings_tracker&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1280" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 结束：指标上报 -->
+        <mxCell id="end" value="&lt;b&gt;指标上报&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;prometheus · request_logger → observability&lt;/font&gt;" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=13;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1400" width="240" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 缓存命中分支 -->
+        <mxCell id="cache_hit" value="&lt;b&gt;返回缓存响应&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px' color='#555555'&gt;semantic cache hit&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;align=center;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="600" y="538" width="220" height="64" as="geometry" />
+        </mxCell>
+
+        <!-- 边（全部 flowAnimation） -->
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="start" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="auth" target="parse">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="parse" target="route">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="route" target="cache">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 决策：未命中（向下） -->
+        <mxCell id="e5" value="未命中 miss" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;fontColor=#d79b00;" edge="1" parent="1" source="cache" target="cdec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 决策：命中（向右） -->
+        <mxCell id="e6" value="命中 hit" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=11;fontColor=#666666;" edge="1" parent="1" source="cache" target="cache_hit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cdec" target="compress">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="compress" target="rate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="rate" target="forward">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="forward" target="response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="response" target="cost">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cost" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 缓存命中 → 指标上报（右侧回流） -->
+        <mxCell id="e13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;flowAnimation=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;" edge="1" parent="1" source="cache_hit" target="end">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="710" y="1432" />
+              <mxPoint x="460" y="1432" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

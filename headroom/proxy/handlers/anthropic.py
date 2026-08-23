@@ -2864,6 +2864,23 @@ class AnthropicHandlerMixin:
                     "[%s] system prompt compaction FAILED: %s", request_id, _sys_compaction_exc
                 )
 
+            # Diff Explorer: emit TOOLS_COMPRESSED after every tool-shape
+            # compaction pass (schema + description + system). Messages are
+            # already covered by INPUT_COMPRESSED above, so we only forward
+            # the final tools list and the accumulated transforms. Even
+            # when no tool compaction fired (tools is None or unchanged) we
+            # emit so downstream extensions can do their own diff/dedupe.
+            self.pipeline_extensions.emit(
+                PipelineStage.TOOLS_COMPRESSED,
+                operation="proxy.request",
+                request_id=request_id,
+                provider=pipeline_provider,
+                model=model,
+                messages=None,
+                tools=body.get("tools"),
+                metadata={"transforms_applied": transforms_applied},
+            )
+
             presend_event = self.pipeline_extensions.emit(
                 PipelineStage.PRE_SEND,
                 operation="proxy.request",

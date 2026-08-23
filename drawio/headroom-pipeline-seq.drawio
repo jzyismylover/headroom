@@ -1,0 +1,115 @@
+<mxfile host="Electron">
+  <diagram id="seqlayout" name="Headroom Pipeline 链路时序图">
+    <mxGraphModel dx="1677" dy="1302" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="agent" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=64;participant=umlActor;verticalAlign=bottom;spacingBottom=-16;labelBackgroundColor=#ffffff;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a3a5c;fontStyle=1;" value="Agent / 客户端" vertex="1">
+          <mxGeometry height="1260" width="100" x="40" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="proxy" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#ffe6cc;strokeColor=#d79b00;fontColor=#7a4d00;fontStyle=1;" value="Proxy 代理" vertex="1">
+          <mxGeometry height="1260" width="100" x="240" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act0" parent="proxy" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#ffe6cc;strokeColor=#d79b00;" value="" vertex="1">
+          <mxGeometry height="750" width="10" x="45" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="pipe" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#fff2cc;strokeColor=#d6b656;fontColor=#7a6200;fontStyle=1;" value="Pipeline 中枢" vertex="1">
+          <mxGeometry height="1260" width="100" x="440" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act1" parent="pipe" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#fff2cc;strokeColor=#d6b656;" value="" vertex="1">
+          <mxGeometry height="1070" width="10" x="45" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="router" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#dae8fc;strokeColor=#6c8ebf;fontColor=#1a3a5c;fontStyle=1;" value="ContentRouter" vertex="1">
+          <mxGeometry height="1260" width="100" x="640" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act2" parent="router" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="" vertex="1">
+          <mxGeometry height="710" width="10" x="45" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="comp" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#d5e8d4;strokeColor=#82b366;fontColor=#2f5c2f;fontStyle=1;" value="Compressor/CCR" vertex="1">
+          <mxGeometry height="1260" width="100" x="840" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act3" parent="comp" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#d5e8d4;strokeColor=#82b366;" value="" vertex="1">
+          <mxGeometry height="610" width="10" x="45" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="mem" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#e1d5e7;strokeColor=#9673a6;fontColor=#4d3560;fontStyle=1;" value="Memory" vertex="1">
+          <mxGeometry height="1260" width="100" x="1040" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act4" parent="mem" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#e1d5e7;strokeColor=#9673a6;" value="" vertex="1">
+          <mxGeometry height="460" width="10" x="45" y="760" as="geometry" />
+        </mxCell>
+        <mxCell id="up" parent="1" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;dropTarget=0;collapsible=0;recursiveResize=0;outlineConnect=0;portConstraint=eastwest;size=40;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;" value="Upstream LLM" vertex="1">
+          <mxGeometry height="1260" width="100" x="1240" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="act5" parent="up" style="html=1;points=[];perimeter=orthogonalPerimeter;outlineConnect=0;fillColor=#f5f5f5;strokeColor=#666666;" value="" vertex="1">
+          <mxGeometry height="310" width="10" x="45" y="910" as="geometry" />
+        </mxCell>
+        <mxCell id="note0" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" value="启动段（一次性）" vertex="1">
+          <mxGeometry height="40" width="120" x="510" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" edge="1" parent="1" source="proxy" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.119;entryX=0;entryY=0.0;" target="act1" value="SETUP&#xa;启动装配">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" edge="1" parent="1" source="proxy" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.1587;entryX=0;entryY=0.0467;" target="act1" value="PRE_START&#xa;启动前钩子">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" edge="1" parent="1" source="proxy" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.1984;entryX=0;entryY=0.0935;" target="act1" value="POST_START&#xa;启动后钩子">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note4" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" value="请求段（严格顺序）" vertex="1">
+          <mxGeometry height="40" width="121" x="510" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" edge="1" parent="1" source="agent" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0.5;exitY=0.2857;entryX=0;entryY=0.0;" target="act0" value="请求&#xa;HTTP · SSE · WS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m6" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.0667;entryX=0;entryY=0.243;" target="act1" value="INPUT_RECEIVED&#xa;消息解析（可改 messages）">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m7" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#6c8ebf;strokeWidth=2.5;fontColor=#1a3a5c;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.1333;entryX=0;entryY=0.2897;" target="act1" value="INPUT_CACHED&#xa;语义缓存读写">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m8" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#82b366;strokeWidth=2.5;fontColor=#2f5c2f;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.2;entryX=0;entryY=0.0;" target="act2" value="route(messages)&#xa;选择压缩器">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m9" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#82b366;strokeWidth=2.5;fontColor=#2f5c2f;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.2667;entryX=0;entryY=0.3832;" target="act1" value="INPUT_ROUTED&#xa;router:* 标记">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m10" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#82b366;strokeWidth=2.5;fontColor=#2f5c2f;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.3333;entryX=0;entryY=0.0;" target="act3" value="compress(messages)&#xa;SmartCrusher/CCR">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m11" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#82b366;strokeWidth=2.5;fontColor=#2f5c2f;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.4;entryX=0;entryY=0.4766;" target="act1" value="INPUT_COMPRESSED&#xa;压缩结果">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m12" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#82b366;strokeWidth=2.5;fontColor=#2f5c2f;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.4667;entryX=0;entryY=0.5234;" target="act1" value="TOOLS_COMPRESSED&#xa;工具 schema 压缩">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m13" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#9673a6;strokeWidth=2.5;fontColor=#4d3560;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5333;entryX=0;entryY=0.0;" target="act4" value="extract + write&#xa;事实写入记忆库">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m14" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;strokeColor=#9673a6;strokeWidth=2.5;fontColor=#4d3560;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.6;entryX=0;entryY=0.6168;" target="act1" value="INPUT_REMEMBERED&#xa;记忆已记录">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m15" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.6667;entryX=0;entryY=0.6636;" target="act1" value="PRE_SEND&#xa;转发前最后修改">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m16" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.7333;entryX=0;entryY=0.0;" target="act5" value="转发请求">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m17" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.8;entryX=0;entryY=0.757;" target="act1" value="POST_SEND&#xa;已发出，等响应">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m18" edge="1" parent="1" source="act5" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=0;exitY=0.3226;entryX=1;entryY=0.8667;" target="act0" value="响应流">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m19" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=block;curved=0;rounded=0;exitX=1;exitY=0.9333;entryX=0;entryY=0.8505;" target="act1" value="RESPONSE_RECEIVED&#xa;收到响应">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="m20" edge="1" parent="1" source="act0" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;curved=0;rounded=0;strokeColor=#999999;fontColor=#999999;exitX=0;exitY=1.0;entryX=0.5;entryY=0.881;" target="agent" value="返回响应">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="note21" parent="1" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;" value="扩展可原地 mutate 或返回替换 PipelineEvent；异常 fail-open" vertex="1">
+          <mxGeometry height="40" width="140" x="510" y="1180" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

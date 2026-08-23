@@ -1,0 +1,36 @@
+{
+  "title": "Headroom Pipeline 链路时序图",
+  "participants": [
+    {"id": "agent", "label": "Agent / 客户端", "actor": true},
+    {"id": "proxy", "label": "Proxy 代理"},
+    {"id": "pipe", "label": "Pipeline 中枢"},
+    {"id": "router", "label": "ContentRouter"},
+    {"id": "comp", "label": "Compressor/CCR"},
+    {"id": "mem", "label": "Memory"},
+    {"id": "up", "label": "Upstream LLM"}
+  ],
+  "messages": [
+    {"note": "启动段（一次性）", "over": "pipe"},
+    {"from": "proxy", "to": "pipe", "label": "SETUP\n启动装配"},
+    {"from": "proxy", "to": "pipe", "label": "PRE_START\n启动前钩子"},
+    {"from": "proxy", "to": "pipe", "label": "POST_START\n启动后钩子"},
+    {"note": "请求段（每请求，严格顺序）", "over": "pipe"},
+    {"from": "agent", "to": "proxy", "label": "请求\nHTTP · SSE · WS"},
+    {"from": "proxy", "to": "pipe", "label": "INPUT_RECEIVED\n消息解析（可改 messages）"},
+    {"from": "proxy", "to": "pipe", "label": "INPUT_CACHED\n语义缓存读写"},
+    {"from": "proxy", "to": "router", "label": "route(messages)\n选择压缩器"},
+    {"from": "proxy", "to": "pipe", "label": "INPUT_ROUTED\nrouter:* 标记"},
+    {"from": "proxy", "to": "comp", "label": "compress(messages)\nSmartCrusher/CCR"},
+    {"from": "proxy", "to": "pipe", "label": "INPUT_COMPRESSED\n压缩结果"},
+    {"from": "proxy", "to": "pipe", "label": "TOOLS_COMPRESSED\n工具 schema 压缩"},
+    {"from": "proxy", "to": "mem", "label": "extract + write\n事实写入记忆库"},
+    {"from": "proxy", "to": "pipe", "label": "INPUT_REMEMBERED\n记忆已记录"},
+    {"from": "proxy", "to": "pipe", "label": "PRE_SEND\n转发前最后修改"},
+    {"from": "proxy", "to": "up", "label": "转发请求"},
+    {"from": "proxy", "to": "pipe", "label": "POST_SEND\n已发出，等响应"},
+    {"from": "up", "to": "proxy", "label": "响应流"},
+    {"from": "proxy", "to": "pipe", "label": "RESPONSE_RECEIVED\n收到响应"},
+    {"from": "proxy", "to": "agent", "label": "返回响应", "return": true},
+    {"note": "扩展可原地 mutate 或返回替换 PipelineEvent；异常 fail-open", "over": "pipe"}
+  ]
+}

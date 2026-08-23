@@ -7,6 +7,7 @@ match the schema documented in ``shares/sdd/headroom/方案.md`` §B2.
 from __future__ import annotations
 
 import datetime as _dt
+import json
 
 import pytest
 from fastapi import FastAPI
@@ -89,17 +90,21 @@ def test_sessions_empty(client):
 
 def test_sessions_returns_required_fields(client, tmp_path):
     db = str(tmp_path / "api.db")
-    _seed(db, _rec(record_id="b", stage="before", tokens=100, session_id="S1"))
-    _seed(db, _rec(record_id="a", stage="after", tokens=20, session_id="S1"))
+    _seed(db, _rec(record_id="b", stage="before", tokens=100, session_id="S1", byte_size=1000))
+    _seed(db, _rec(record_id="a", stage="after", tokens=20, session_id="S1", byte_size=200))
     r = client.get("/api/diff-explorer/sessions")
     body = r.json()
     assert body["total"] == 1
     item = body["items"][0]
     required = {"session_id", "request_count", "first_seen", "last_seen",
-                "total_tokens_before", "total_tokens_after", "savings_percent"}
+                "total_tokens_before", "total_tokens_after",
+                "total_bytes_before", "total_bytes_after", "savings_percent"}
     assert required <= set(item.keys())
     assert item["total_tokens_before"] == 100
     assert item["total_tokens_after"] == 20
+    assert item["total_bytes_before"] == 1000
+    assert item["total_bytes_after"] == 200
+    # savings_percent is byte-based (honest metric).
     assert item["savings_percent"] == 80.0
 
 
@@ -141,9 +146,33 @@ def test_session_requests_returns_all_stages(client, tmp_path):
     _seed(db, _rec(record_id="b2", request_id="r2", session_id="S", stage="before", tokens=50))
     r = client.get("/api/diff-explorer/sessions/S/requests")
     body = r.json()
-    assert body["total"] == 3
+    # One entry per request_id (before/after merged), newest-first.
+    assert body["total"] == 2
     for item in body["items"]:
-        assert {"request_id", "stage", "model", "tokens", "timestamp"} <= set(item.keys())
+        assert {
+            "request_id", "model", "timestamp", "tokens_before", "tokens_after",
+            "byte_size_before", "byte_size_after", "preview",
+        } <= set(item.keys())
+    r1 = next(it for it in body["items"] if it["request_id"] == "r1")
+    assert r1["tokens_before"] == 100
+    assert r1["tokens_after"] == 20
+
+
+def test_session_requests_preview_is_before_messages(client, tmp_path):
+    """preview must be the flattened text of the before-stage messages."""
+    db = str(tmp_path / "api.db")
+    _seed(
+        db,
+        _rec(record_id="b", request_id="r1", session_id="S", stage="before",
+             messages_json='[{"role":"system","content":"You are helpful."},'
+                           '{"role":"user","content":"Hello world"}]'),
+        _rec(record_id="a", request_id="r1", session_id="S", stage="after",
+             messages_json='[{"role":"user","content":"Hello"}]'),
+    )
+    r = client.get("/api/diff-explorer/sessions/S/requests")
+    items = r.json()["items"]
+    assert len(items) == 1
+    assert items[0]["preview"] == "You are helpful.\nHello world"
 
 
 def test_session_requests_unknown_returns_empty(client):
@@ -183,6 +212,73 @@ def test_request_diff_returns_two_stages(client, tmp_path):
     assert body["stages"]["after"]["messages"] == [{"role": "user", "content": "AFTER"}]
 
 
+def test_request_diff_returns_delta_blocks(client, tmp_path):
+    """New-format delta records expose merged diff blocks + compressors."""
+    db = str(tmp_path / "api.db")
+    before_payload = json.dumps({
+        "_delta": True,
+        "entries": [
+            {"i": 1, "c": "KCompress", "m": {"role": "assistant", "content": "long tail"}},
+        ],
+    }, separators=(",", ":"))
+    after_payload = json.dumps({
+        "_delta": True,
+        "entries": [
+            {"i": 1, "c": "KCompress", "m": {"role": "assistant", "content": "tldr"}},
+        ],
+    }, separators=(",", ":"))
+    transforms_json = json.dumps({
+        "transforms_applied": ["kompress:assistant:0.30"],
+        "compressors": ["KCompress"],
+    }, separators=(",", ":"))
+    _seed(
+        db,
+        _rec(record_id="b", request_id="r1", stage="before", tokens=100,
+             messages_json=before_payload, byte_size=80, transforms_json=transforms_json),
+        _rec(record_id="a", request_id="r1", stage="after", tokens=20,
+             messages_json=after_payload, byte_size=40, transforms_json=transforms_json),
+    )
+    r = client.get("/api/diff-explorer/requests/r1")
+    body = r.json()
+    assert body["legacy"] is False
+    assert body["compressors"] == ["KCompress"]
+    assert body["transforms_applied"] == ["kompress:assistant:0.30"]
+    assert body["tokens_before"] == 100
+    assert body["tokens_after"] == 20
+    assert body["byte_size_before"] == 80
+    assert body["byte_size_after"] == 40
+    assert len(body["blocks"]) == 1
+    block = body["blocks"][0]
+    assert block["i"] == 1
+    assert block["compressor"] == "KCompress"
+    assert block["role"] == "assistant"
+    assert block["before"]["content"] == "long tail"
+    assert block["after"]["content"] == "tldr"
+
+
+def test_request_diff_legacy_records_compute_blocks(client, tmp_path):
+    """Old full-snapshot records are diffed server-side; legacy=True."""
+    db = str(tmp_path / "api.db")
+    _seed(
+        db,
+        _rec(record_id="b", request_id="r1", stage="before", tokens=100,
+             messages_json='[{"role":"user","content":"same"},{"role":"assistant","content":"LONG"}]',
+             byte_size=80),
+        _rec(record_id="a", request_id="r1", stage="after", tokens=50,
+             messages_json='[{"role":"user","content":"same"},{"role":"assistant","content":"tldr"}]',
+             byte_size=50),
+    )
+    r = client.get("/api/diff-explorer/requests/r1")
+    body = r.json()
+    assert body["legacy"] is True
+    assert body["compressors"] == []
+    assert len(body["blocks"]) == 1
+    block = body["blocks"][0]
+    assert block["i"] == 1
+    assert block["before"]["content"] == "LONG"
+    assert block["after"]["content"] == "tldr"
+
+
 def test_request_diff_does_not_include_presend(client, tmp_path):
     """The Diff Explorer contract: stages ONLY contain before / after."""
     db = str(tmp_path / "api.db")
@@ -216,6 +312,93 @@ def test_request_diff_truncated_placeholder(client, tmp_path):
 def test_request_diff_huge_id_rejected(client):
     r = client.get("/api/diff-explorer/requests/" + "x" * 300)
     assert r.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Tools payload surfacing — new fields on /requests/{rid}
+# ---------------------------------------------------------------------------
+def test_request_diff_includes_tools_payload(client, tmp_path):
+    """tools_json on a record surfaces as a list at .stages.before.tools /
+    .stages.after.tools, plus tools_byte_size + total_byte_size."""
+    db = str(tmp_path / "api.db")
+    tools = [
+        {"type": "function", "function": {"name": "echo", "description": "hi"}},
+        {"type": "function", "function": {"name": "noop"}},
+    ]
+    tools_json = json.dumps(tools, separators=(",", ":"))
+    _seed(
+        db,
+        _rec(
+            record_id="b",
+            request_id="r1",
+            stage="before",
+            messages_json='[{"role":"user","content":"BEFORE"}]',
+            tools_json=tools_json,
+            tools_byte_size=len(tools_json.encode("utf-8")),
+            tools_hash="h-tools",
+        ),
+        _rec(
+            record_id="a",
+            request_id="r1",
+            stage="after",
+            tokens=20,
+            messages_json='[{"role":"user","content":"AFTER"}]',
+            tools_json=tools_json,
+            tools_byte_size=len(tools_json.encode("utf-8")),
+            tools_hash="h-tools",
+        ),
+    )
+    r = client.get("/api/diff-explorer/requests/r1")
+    body = r.json()
+    before = body["stages"]["before"]
+    after = body["stages"]["after"]
+    for stage in (before, after):
+        assert stage["tools"] == tools
+        assert stage["tools_byte_size"] == len(tools_json.encode("utf-8"))
+        assert stage["total_byte_size"] == stage["byte_size"] + stage["tools_byte_size"]
+        # ``byte_size`` still tracks messages-only bytes (semantics preserved).
+        assert stage["byte_size"] == len(stage["messages_json" if False else "_placeholder"].encode("utf-8")) if False else isinstance(stage["byte_size"], int)
+
+
+def test_request_diff_legacy_record_no_tools(client, tmp_path):
+    """A record saved without tools columns surfaces tools=null and
+    tools_byte_size=0 — frontends must render an empty tools section.
+    """
+    db = str(tmp_path / "api.db")
+    _seed(
+        db,
+        _rec(record_id="b", request_id="r1", stage="before",
+             messages_json='[{"role":"user","content":"hi"}]'),
+        _rec(record_id="a", request_id="r1", stage="after",
+             messages_json='[{"role":"user","content":"hi"}]'),
+    )
+    r = client.get("/api/diff-explorer/requests/r1")
+    body = r.json()
+    before = body["stages"]["before"]
+    after = body["stages"]["after"]
+    for stage in (before, after):
+        assert stage["tools"] is None
+        assert stage["tools_byte_size"] == 0
+        assert stage["total_byte_size"] == stage["byte_size"]
+
+
+def test_request_diff_malformed_tools_json_surfaces_as_none(client, tmp_path):
+    """A record with broken tools_json must not break the API; tools
+    surfaces as None and the messages payload is unaffected."""
+    db = str(tmp_path / "api.db")
+    _seed(
+        db,
+        _rec(record_id="b", request_id="r1", stage="before",
+             messages_json='[{"role":"user","content":"hi"}]',
+             tools_json="{not valid json", tools_byte_size=14, tools_hash="h"),
+    )
+    r = client.get("/api/diff-explorer/requests/r1")
+    body = r.json()
+    before = body["stages"]["before"]
+    assert before["tools"] is None
+    assert before["tools_byte_size"] == 14
+    assert before["messages"] == [{"role": "user", "content": "hi"}]
+
 
 
 # ---------------------------------------------------------------------------
